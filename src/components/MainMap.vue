@@ -34,6 +34,7 @@ export default {
         const vectorLayer = new OlVectorLayer({
             source: vectorSource
         })
+    // 지도 이미지 로드
     this.olMap = new OlMap({
       target: this.$refs.map,
       controls : defaults({
@@ -48,7 +49,7 @@ export default {
           vectorLayer
       ],
       view: new OlView({
-        center: fromLonLat([126.9156516, 37.5570685]), //마포구
+        center: fromLonLat([126.9156516, 37.5570685]), //마포구 위.경도 정보
         zoom: 15,
       })
     });
