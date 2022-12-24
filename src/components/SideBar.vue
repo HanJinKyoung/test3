@@ -42,8 +42,24 @@
           <BButton 
               class="save-btn"
               @click="saveReview"
+              v-if="!isDisabledInput"
               >
               저장
+          </BButton>
+          <BButton 
+              class="mr-2"
+              variant="success"
+              @click="$store.commit('setInputState',false)"
+              v-if="isDisabledInput"
+              >
+              수정하기
+          </BButton>
+          <BButton 
+              variant="danger"
+              @click="removeReview"
+              v-if="isDisabledInput"
+              >
+              삭제하기
           </BButton>
         </div>
       </div>
@@ -63,9 +79,10 @@
 <script>
 import axios from 'axios';
 import VueResizable from 'vue-resizable';
-import ProgressSpinner from '@/components/ProgressSpinner.vue'
-import { process } from '@/common/Api.js'
-import { ok } from '@/common/Dialog.js'
+import ProgressSpinner from '@/components/ProgressSpinner.vue';
+import { process } from '@/common/Api.js';
+import { ok } from '@/common/Dialog.js';
+import { mapState } from 'vuex';
 
 export default {
   name: 'SideBar',
@@ -74,15 +91,52 @@ export default {
     VueResizable
   },
   created() {
-    this.$root.$refs.sideBar =this;
+    this.$root.$refs.sideBar = this;
+  },
+  computed: {
+    ...mapState({
+      reviewId: state => state.curReviewId,
+      curAddress: state => state.curAddress,
+      curGrade: state => state.curGrade,
+      curReview: state => state.curReview,
+      curTitle: state => state.curTitle
+    }),
+    address: {
+      get() {
+        return this.curAddress;
+      },
+      set(newVal) {
+        this.$store.commit('setCurAddress', newVal);
+      }
+    },
+    grade: {
+      get() {
+        return this.curGrade
+      },
+      set(newVal) {
+        this.$store.commit('setCurGrade', newVal);
+      }
+    },
+    review: {
+      get() {
+        return this.curReview
+      },
+      set(newVal) {
+        this.$store.commit('setCurReview', newVal);
+      }
+    },
+    title: {
+      get() {
+        return this.curTitle
+      },
+      set(newVal) {
+        this.$store.commit('setCurTitle', newVal);
+      }
+    }
   },
   data() {
     return {
       isVisibleSideBar: true,
-      title: undefined,
-      address: undefined,
-      grade: undefined,
-      review: undefined,
       processingCount: 0
     }
   },
@@ -133,14 +187,17 @@ export default {
     //   } finally{
     //     this.processingCount --;
     //   }
-    //모듏롸 하면서 수정...
+    //모듈화 하면서 수정...
       saveReview () {
         process(this, async () => {
           await axios.post('/api/review/saveReview', {
+            id: this.reviewId, //추가
             title: this.title,
             address: this.address,
             grade: this.grade,
-            review: this.review
+            review: this.review,
+            lon: this.$store.state.curLon,
+            lat: this.$store.state.curLat 
           })
           // await this.$bvModal.msgBoxOk('저장 완료되었습니다.', {
           //   hideHeader: true,
@@ -153,27 +210,33 @@ export default {
           //   footerClass: 'p-2 border-top-0',
           // })
           await ok(this, '저장 완료되었습니다.')
+
+          await this.$store.dispatch('setReviews', this); //추가
+          this.$store.commit('setInputState', true); //추가
         })
-      }
+      },
+      removeReview() {
+        process(this, async () => {
+          const isConfirmed = await confirm(this, `'${this.title}' 리뷰를 삭제하시겠습니까?`);
+          if (! isConfirmed) return;
+
+          await axios.delete('/api/review/deleteReview', {
+            data: {
+              id: this.reviewId
+            }
+          });
+
+          await ok(this, '삭제되었습니다.');
+
+          await this.$store.dispatch('setReviews', this);
+        })
+      },
   },
     
 }
 </script>
 
 <style lang="scss" scoped>
-
-.bottom-btn-area {
-  text-align: right;
-  padding-right: 10px;
-
-  .save-btn  {
-      color: #fff;
-      font-weight: bold;
-      background-color: #ee9e06;
-  }
-}
-
-
 .side-bar-wrapper {
   display: flex;
   color: #fff;
@@ -295,6 +358,16 @@ export default {
   }
 
 
+}
+.bottom-btn-area {
+  text-align: right;
+  padding-right: 10px;
+
+  .save-btn {
+      color: #fff;
+      font-weight: bold;
+        background-color: #ee9e06;
+  }
 }
 
 </style>
